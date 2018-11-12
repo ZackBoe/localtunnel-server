@@ -53,7 +53,7 @@ export default function(opt) {
         });
     }
 
-    router.get('/api/status', async (ctx, next) => {
+    router.get('/tunnels/status', async (ctx, next) => {
         const stats = manager.stats;
         ctx.body = {
             tunnels: stats.tunnels,
@@ -61,7 +61,7 @@ export default function(opt) {
         };
     });
 
-    router.get('/api/tunnels/:id/status', async (ctx, next) => {
+    router.get('/tunnels/:id/status', async (ctx, next) => {
         const clientId = ctx.params.id;
         const client = manager.getClient(clientId);
         if (!client) {
@@ -75,49 +75,31 @@ export default function(opt) {
         };
     });
 
-    app.use(router.routes());
-    app.use(router.allowedMethods());
+    // Request that does not specify a client name
+    router.get('/tunnels', async (ctx, next) => {
+	const reqId = hri.random();
+	debug('making new api client with id %s', reqId);
+	const info = await manager.newClient(reqId);
 
-    // root endpoint
-    app.use(async (ctx, next) => {
-        const path = ctx.request.path;
-
-        // skip anything not on the root path
-        if (path !== '/') {
-            await next();
-            return;
-        }
-
-        const isNewClientRequest = ctx.query['new'] !== undefined;
-        if (isNewClientRequest) {
-            const reqId = hri.random();
-            debug('making new client with id %s', reqId);
-            const info = await manager.newClient(reqId);
-
-            const url = schema + '://' + info.id + '.' + ctx.request.host;
-            info.url = url;
-            ctx.body = info;
-            return;
-        }
-
-        // no new client request, send to landing page
-        ctx.redirect(landingPage);
+	const url = schema + '://' + info.id + '.' + ctx.request.host;
+	info.url = url;
+	ctx.body = info;
+	return;
     });
 
-    // anything after the / path is a request for a specific client name
-    // This is a backwards compat feature
-    app.use(async (ctx, next) => {
-        const parts = ctx.request.path.split('/');
+    // Request for a specific client name
+    router.get('/tunnels/:id', async (ctx, next) => {
+        const parts = ctx.params.id.split('/');
 
         // any request with several layers of paths is not allowed
         // rejects /foo/bar
         // allow /foo
-        if (parts.length !== 2) {
+        if (parts.length !== 1) {
             await next();
             return;
         }
 
-        const reqId = parts[1];
+        const reqId = parts[0];
 
         // limit requested hostnames to 63 characters
         if (! /^(?:[a-z0-9][a-z0-9\-]{4,63}[a-z0-9]|[a-z0-9]{4,63})$/.test(reqId)) {
@@ -136,6 +118,23 @@ export default function(opt) {
         info.url = url;
         ctx.body = info;
         return;
+    });
+
+    app.use(router.routes());
+    app.use(router.allowedMethods());
+
+    // root endpoint
+    app.use(async (ctx, next) => {
+        const path = ctx.request.path;
+
+        // skip anything not on the root path
+        if (path !== '/') {
+            await next();
+            return;
+        }
+
+        // no new client request, send to landing page
+        ctx.redirect(landingPage);
     });
 
     const server = http.createServer();

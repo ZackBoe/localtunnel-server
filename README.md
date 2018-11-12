@@ -1,5 +1,7 @@
 # localtunnel-server
 
+This is a fork that includes [@tkambler](https://github.com/tkambler)'s [config & auth PR](https://github.com/localtunnel/server/pull/95/) and uses `/tunnels/` as the root for all requests.
+
 [![Build Status](https://travis-ci.org/localtunnel/server.svg?branch=master)](https://travis-ci.org/localtunnel/server)
 
 localtunnel exposes your localhost to the world for easy testing and sharing! No need to mess with DNS or deploy just to have others test out your changes.
@@ -59,11 +61,11 @@ tokens:
 
 ## REST API
 
-### POST /api/tunnels
+### GET /tunnels
 
 Create a new tunnel. A LocalTunnel client posts to this endpoint to request a new tunnel with a specific name or a randomly assigned name.
 
-### GET /api/status
+### GET /tunnels/status
 
 General server information.
 
